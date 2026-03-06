@@ -1,0 +1,4 @@
+{
+  "rpcUrl": "https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY",
+  "derivationPath": "44'/501'/0'/0'"
+}
