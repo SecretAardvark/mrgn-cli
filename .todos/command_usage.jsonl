@@ -45,3 +45,9 @@
 {"ts":"2026-03-06T16:01:34.405192333-08:00","cmd":"start","session":"ses_931314","ok":true,"dur_ms":211}
 {"ts":"2026-03-06T16:01:34.741339366-08:00","cmd":"start","session":"ses_931314","ok":true,"dur_ms":212}
 {"ts":"2026-03-06T16:01:35.066236182-08:00","cmd":"start","session":"ses_931314","ok":true,"dur_ms":215}
+{"ts":"2026-03-06T16:07:06.494949855-08:00","cmd":"close","session":"ses_ca1972","ok":true,"dur_ms":112}
+{"ts":"2026-03-06T16:07:06.733654948-08:00","cmd":"close","session":"ses_ca1972","ok":true,"dur_ms":127}
+{"ts":"2026-03-06T16:07:06.99552369-08:00","cmd":"close","session":"ses_ca1972","ok":true,"dur_ms":123}
+{"ts":"2026-03-06T16:07:07.250746777-08:00","cmd":"close","session":"ses_ca1972","ok":true,"dur_ms":121}
+{"ts":"2026-03-06T16:07:07.493947097-08:00","cmd":"close","session":"ses_ca1972","ok":true,"dur_ms":120}
+{"ts":"2026-03-06T16:07:07.740892947-08:00","cmd":"start","session":"ses_ca1972","ok":true,"dur_ms":202}
