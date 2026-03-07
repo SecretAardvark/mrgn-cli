@@ -1,6 +1,10 @@
-import Transport from "@ledgerhq/hw-transport-node-hid";
-import Solana from "@ledgerhq/hw-app-solana";
+import TransportModule from "@ledgerhq/hw-transport-node-hid";
+import SolanaModule from "@ledgerhq/hw-app-solana";
 import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+
+// Handle CJS/ESM double-default wrapping
+const Transport = (TransportModule as any).default ?? TransportModule;
+const Solana = (SolanaModule as any).default ?? SolanaModule;
 
 export interface Wallet {
   publicKey: PublicKey;
@@ -12,8 +16,8 @@ export class LedgerWallet implements Wallet {
   publicKey: PublicKey;
 
   private constructor(
-    private solana: Solana,
-    private transport: Transport,
+    private solana: InstanceType<typeof Solana>,
+    private transport: InstanceType<typeof Transport>,
     private path: string,
     publicKey: PublicKey
   ) {
