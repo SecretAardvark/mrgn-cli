@@ -2,16 +2,19 @@ import inquirer from "inquirer";
 import ora from "ora";
 import chalk from "chalk";
 import type { MarginfiClient } from "@mrgnlabs/marginfi-client-v2";
+import type { Wallet } from "../ledger.js";
 import { formatAmount } from "../utils.js";
+import { sendWithCrank } from "../send-legacy.js";
 
 export async function repayAction(
   client: MarginfiClient,
-  account: any
+  account: any,
+  wallet: Wallet
 ): Promise<void> {
   const activeBorrows: any[] = [];
-  for (const balance of account.balances) {
-    if (!balance.active || balance.liabilityShares.isZero()) continue;
-    const bank = (client as any).getBankByPk(balance.bankPk);
+  for (const balance of account.activeBalances) {
+    if (balance.liabilityShares.isZero()) continue;
+    const bank = client.getBankByPk(balance.bankPk);
     if (bank) activeBorrows.push(bank);
   }
 
@@ -53,9 +56,21 @@ export async function repayAction(
 
   const spinner = ora("Submitting transaction...").start();
   try {
-    const sig = isMax
-      ? await account.repay(0, bank.address, true)
-      : await account.repay(repayAmount, bank.address, false);
+    const { instructions: updateFeedIxs } = await account.makeUpdateFeedIx([]);
+    const repayIxs = await account.makeRepayIx(
+      isMax ? 0 : repayAmount,
+      bank.address,
+      isMax
+    );
+
+    const connection = (client as any).program.provider.connection;
+    const sig = await sendWithCrank(
+      connection,
+      wallet,
+      updateFeedIxs,
+      repayIxs.instructions,
+      repayIxs.keys
+    );
     spinner.succeed(`Repayment confirmed! Signature: ${sig}`);
   } catch (err: any) {
     spinner.fail("Repayment failed");

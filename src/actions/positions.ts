@@ -25,34 +25,44 @@ export async function showPositions(
   let totalBorrows = 0;
   let hasPositions = false;
 
-  const balances = account.balances;
+  const activeBalances = account.activeBalances;
 
-  for (const balance of balances) {
-    if (!balance.active) continue;
-    hasPositions = true;
-
+  for (const balance of activeBalances) {
     const bank = client.getBankByPk(balance.bankPk);
     if (!bank) continue;
+    hasPositions = true;
 
     const tokenSymbol = (bank as any).tokenSymbol ?? (bank as any).mint.toBase58().slice(0, 6);
-    const depositAmount = balance.assetShares.isZero()
-      ? 0
-      : account.getBalance(balance.bankPk).assets.toNumber();
-    const borrowAmount = balance.liabilityShares.isZero()
-      ? 0
-      : account.getBalance(balance.bankPk).liabilities.toNumber();
 
-    const depositValue = depositAmount * ((bank as any).getPrice?.() ?? 0);
-    const borrowValue = borrowAmount * ((bank as any).getPrice?.() ?? 0);
+    // Get quantities using SDK methods
+    const qty = balance.computeQuantityUi(bank);
+    const depositAmount = qty.assets.toNumber();
+    const borrowAmount = qty.liabilities.toNumber();
+
+    // Get USD values using oracle price
+    const oraclePrice = client.getOraclePriceByBank(bank.address);
+    let depositValue = 0;
+    let borrowValue = 0;
+    if (oraclePrice) {
+      const usdValues = balance.computeUsdValue(bank, oraclePrice);
+      depositValue = usdValues.assets.toNumber();
+      borrowValue = usdValues.liabilities.toNumber();
+    }
+
     totalDeposits += depositValue;
     totalBorrows += borrowValue;
+
+    // Get interest rates
+    const rates = (bank as any).computeInterestRates();
+    const lendingRate = rates.lendingRate.toNumber();
+    const borrowingRate = rates.borrowingRate.toNumber();
 
     table.push([
       tokenSymbol,
       formatAmount(depositAmount),
       formatAmount(borrowAmount),
-      formatApy((bank as any).getDepositRate?.() ?? 0),
-      formatApy(-((bank as any).getBorrowRate?.() ?? 0)),
+      formatApy(lendingRate),
+      formatApy(-borrowingRate),
       formatUsd(depositValue - borrowValue),
     ]);
   }

@@ -32,18 +32,42 @@ export class LedgerWallet implements Wallet {
     return new LedgerWallet(solana, transport, derivationPath, publicKey);
   }
 
+  private async reconnect(): Promise<void> {
+    try { await this.transport.close(); } catch {}
+    this.transport = await Transport.open("");
+    this.solana = new Solana(this.transport);
+  }
+
+  private async signWithRetry(
+    sign: () => Promise<{ signature: Buffer }>
+  ): Promise<Buffer> {
+    try {
+      const { signature } = await sign();
+      return signature;
+    } catch (err: any) {
+      if (err.message?.includes("Invalid channel")) {
+        await this.reconnect();
+        const { signature } = await sign();
+        return signature;
+      }
+      throw err;
+    }
+  }
+
   async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
     if (tx instanceof Transaction) {
-      const serialized = tx.serialize({
-        requireAllSignatures: false,
-        verifySignatures: false,
-      });
-      const { signature } = await this.solana.signTransaction(this.path, serialized);
+      const message = tx.serializeMessage();
+      const signature = await this.signWithRetry(() =>
+        this.solana.signTransaction(this.path, message)
+      );
       tx.addSignature(this.publicKey, Buffer.from(signature));
       return tx;
     }
-    const serialized = tx.serialize();
-    const { signature } = await this.solana.signTransaction(this.path, Buffer.from(serialized));
+    // VersionedTransaction: pass message bytes only
+    const message = tx.message.serialize();
+    const signature = await this.signWithRetry(() =>
+      this.solana.signTransaction(this.path, Buffer.from(message))
+    );
     tx.addSignature(this.publicKey, signature);
     return tx;
   }

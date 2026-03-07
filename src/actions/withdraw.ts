@@ -2,16 +2,19 @@ import inquirer from "inquirer";
 import ora from "ora";
 import chalk from "chalk";
 import type { MarginfiClient } from "@mrgnlabs/marginfi-client-v2";
+import type { Wallet } from "../ledger.js";
 import { formatAmount } from "../utils.js";
+import { sendWithCrank } from "../send-legacy.js";
 
 export async function withdrawAction(
   client: MarginfiClient,
-  account: any
+  account: any,
+  wallet: Wallet
 ): Promise<void> {
   const activeDeposits: any[] = [];
-  for (const balance of account.balances) {
-    if (!balance.active || balance.assetShares.isZero()) continue;
-    const bank = (client as any).getBankByPk(balance.bankPk);
+  for (const balance of account.activeBalances) {
+    if (balance.assetShares.isZero()) continue;
+    const bank = client.getBankByPk(balance.bankPk);
     if (bank) activeDeposits.push(bank);
   }
 
@@ -53,9 +56,22 @@ export async function withdrawAction(
 
   const spinner = ora("Submitting transaction...").start();
   try {
-    const sig = isMax
-      ? await account.withdraw(0, bank.address, true)
-      : await account.withdraw(withdrawAmount, bank.address, false);
+    // Get raw instructions (bypasses SDK v0 formatting)
+    const { instructions: updateFeedIxs } = await account.makeUpdateFeedIx([]);
+    const withdrawIxs = await account.makeWithdrawIx(
+      isMax ? 0 : withdrawAmount,
+      bank.address,
+      isMax
+    );
+
+    const connection = (client as any).program.provider.connection;
+    const sig = await sendWithCrank(
+      connection,
+      wallet,
+      updateFeedIxs,
+      withdrawIxs.instructions,
+      withdrawIxs.keys
+    );
     spinner.succeed(`Withdrawal confirmed! Signature: ${sig}`);
   } catch (err: any) {
     spinner.fail("Withdrawal failed");

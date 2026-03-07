@@ -2,11 +2,14 @@ import inquirer from "inquirer";
 import ora from "ora";
 import chalk from "chalk";
 import type { MarginfiClient } from "@mrgnlabs/marginfi-client-v2";
+import type { Wallet } from "../ledger.js";
 import { formatAmount } from "../utils.js";
+import { sendWithCrank } from "../send-legacy.js";
 
 export async function depositAction(
   client: MarginfiClient,
-  account: any
+  account: any,
+  wallet: Wallet
 ): Promise<void> {
   const banks = [...(client as any).banks.values()];
   const bankChoices = banks
@@ -43,7 +46,17 @@ export async function depositAction(
 
   const spinner = ora("Submitting transaction...").start();
   try {
-    const sig = await account.deposit(depositAmount, bank.address);
+    const { instructions: updateFeedIxs } = await account.makeUpdateFeedIx([]);
+    const depositIxs = await account.makeDepositIx(depositAmount, bank.address);
+
+    const connection = (client as any).program.provider.connection;
+    const sig = await sendWithCrank(
+      connection,
+      wallet,
+      updateFeedIxs,
+      depositIxs.instructions,
+      depositIxs.keys
+    );
     spinner.succeed(`Deposit confirmed! Signature: ${sig}`);
   } catch (err: any) {
     spinner.fail("Deposit failed");

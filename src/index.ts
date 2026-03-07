@@ -94,16 +94,16 @@ async function main() {
         await showPositions(client, account);
         break;
       case "deposit":
-        await depositAction(client, account);
+        await depositAction(client, account, wallet);
         break;
       case "withdraw":
-        await withdrawAction(client, account);
+        await withdrawAction(client, account, wallet);
         break;
       case "borrow":
-        await borrowAction(client, account);
+        await borrowAction(client, account, wallet);
         break;
       case "repay":
-        await repayAction(client, account);
+        await repayAction(client, account, wallet);
         break;
       case "quit":
         running = false;
